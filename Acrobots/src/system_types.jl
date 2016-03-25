@@ -21,3 +21,5 @@ abstract Velocity{N, T} <: FixedVectorNoTuple{N, T}
 abstract Input{N, T} <: FixedVectorNoTuple{N, T}
 abstract Output{N, T} <: FixedVectorNoTuple{N, T}
 abstract State{N, T} <: FixedVectorNoTuple{N, T}
+
+abstract DynamicalSystem{StateType, InputType, OutputType}

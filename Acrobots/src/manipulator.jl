@@ -1,4 +1,4 @@
-abstract Manipulator{StateType, InputType, OutputType}
+abstract Manipulator{StateType, InputType, OutputType} <: DynamicalSystem{StateType, InputType, OutputType}
 
 function dynamics{State, Input}(robot::Manipulator, time, state::State, input::Input)
     H, C, B = manipulator_dynamics(robot, state)

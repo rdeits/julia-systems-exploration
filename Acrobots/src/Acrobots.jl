@@ -7,6 +7,7 @@ using PyCall
 import Base: convert, *
 using ForwardDiff
 using Flatten
+import ControlSystems: lqr
 
 @pyimport drake as lcmdrake
 
