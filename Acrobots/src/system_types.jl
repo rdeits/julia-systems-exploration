@@ -1,11 +1,11 @@
 macro make_type(typename, parent, fields...)
-    ex = :(immutable $(esc(typename)){T} <: $(parent){$(length(fields)), T} end)
+    ex = :(immutable $(esc(typename)){$(esc(:T))} <: $(parent){$(length(fields)), $(esc(:T))} end)
     push!(ex.args, Expr(:block))
     for field in fields
-        push!(ex.args[3].args, :($(field)::T))
+        push!(ex.args[3].args, :($(field)::$(esc(:T))))
     end
-    constructor_expr = quote function $(esc(typename))(a::NTuple{$(length(fields)), T})
-            new{T}()
+    constructor_expr = quote function $(esc(typename))(a::NTuple{$(length(fields)), $(esc(:T))})
+            $(esc(:new)){$(esc(:T))}()
             end
         end
     constructor_expr = constructor_expr.args[2] # remove the `begin` wrapper
