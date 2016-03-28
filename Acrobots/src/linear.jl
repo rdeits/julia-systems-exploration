@@ -40,10 +40,7 @@ end
 @make_type LQRState State x
 
 function lqr{T, State, Input, Output}(sys::LinearSystem{T, State, Input, Output}, Q, R)
-    @show sys.A
-    @show sys.B
     K = lqr(Matrix{T}(sys.A), Matrix{T}(sys.B), Q, R)
-    @show K
     LinearSystem{T, LQRState, Output, Input, 1, length(Output), length(Input)}(
         Mat{1,1,T}(0),
         Mat{1, length(Output), T}(0),
