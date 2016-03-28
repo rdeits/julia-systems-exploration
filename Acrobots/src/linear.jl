@@ -1,4 +1,4 @@
-type LinearSystem{T, StateType, InputType, OutputType, NStates, NInputs, NOutputs}
+immutable LinearSystem{T, StateType, InputType, OutputType, NStates, NInputs, NOutputs}
     A::Mat{NStates, NStates, T}
     B::Mat{NStates, NInputs, T}
     C::Mat{NOutputs, NStates, T}
@@ -29,23 +29,26 @@ end
     end
 end
 
-function linearize{StateType, InputType, OutputType}(robot::Manipulator{StateType, InputType, OutputType}, time, state::StateType, input::InputType)
-    segment_lengths = [1; length(state); length(input)]
+@generated function dynamics{T, State, Input}(sys::Manipulator{State, Input}, x::AbstractVector{T})
+    segment_lengths = [1; length(State); length(Input)]
     breaks = cumsum(segment_lengths)
-    function wrapped_dynamics(x)
-        to_vector(dynamics(robot, x[1],
-            StateType(x[(breaks[1]+1):breaks[2]]),
-            InputType(x[(breaks[2]+1):breaks[3]])))
-    end
-    function wrapped_output(x)
-        to_vector(output(robot, x[1],
-            StateType(x[(breaks[1]+1):breaks[2]]),
-            InputType(x[(breaks[2]+1):breaks[3]])))
-    end
+    :(dynamics(sys, x[1],
+        State(x[$(breaks[1]+1):$(breaks[2])]),
+        Input(x[$(breaks[2]+1):$(breaks[3])])))
+end
 
+@generated function output{T, State, Input}(sys::Manipulator{State, Input}, x::AbstractVector{T})
+    segment_lengths = [1; length(State); length(Input)]
+    breaks = cumsum(segment_lengths)
+    :(output(sys, x[1],
+        State(x[$(breaks[1]+1):$(breaks[2])]),
+        Input(x[$(breaks[2]+1):$(breaks[3])])))
+end
+
+function linearize{StateType, InputType, OutputType}(robot::Manipulator{StateType, InputType, OutputType}, time, state::StateType, input::InputType)
     x = vcat(map(x -> convert(Vector{Float64}, x), ([time], state, input))...)
-    AB = ForwardDiff.jacobian(wrapped_dynamics, x)
-    CD = ForwardDiff.jacobian(wrapped_output, x)
+    AB = ForwardDiff.jacobian(x -> dynamics(robot, x), x)
+    CD = ForwardDiff.jacobian(x -> output(robot, x), x)
     LinearSystem{Float64, StateType, InputType, OutputType, length(StateType), length(InputType), length(OutputType)}(
         AB[:,1+(1:length(StateType))], AB[:,((length(StateType)+2):end)],
         CD[:,1+(1:length(StateType))], CD[:,((length(StateType)+2):end)])

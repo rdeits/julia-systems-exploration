@@ -21,28 +21,35 @@ type Acrobot{T} <: Manipulator{AcrobotState, AcrobotInput, AcrobotOutput}
     gravity::T
 end
 
+state_type{T <: Acrobot}(bot_type::Type{T}) = AcrobotState
+velocity_type{T <: Acrobot}(bot_type::Type{T}) = AcrobotVelocity
+
+
 function manipulator_dynamics{ParamType, T}(robot::Acrobot{ParamType}, state::AcrobotState{T})
     inertias_about_joint = [robot.links[i].inertia + robot.links[i].mass * robot.links[i].length_to_CoM^2 for i in 1:2]
     m2l1lc2 = robot.links[2].mass * robot.links[1].length * robot.links[2].length_to_CoM
 
-    position = convert(AcrobotPosition, state)
-    velocity = convert(AcrobotVelocity, state)
+    position = convert(AcrobotPosition{T}, state)
+    velocity = convert(AcrobotVelocity{T}, state)
 
     c = cos(position)
     s = sin(position)
     s12 = sin(position.theta1 + position.theta2)
 
     h12 = inertias_about_joint[2] + m2l1lc2 * c[2]
-    H = [inertias_about_joint[1] + inertias_about_joint[2] + robot.links[2].mass * robot.links[1].length^2 + 2 * m2l1lc2 * c[2]   h12;
-        h12                                                                                                                       inertias_about_joint[2]]
-    C = [-2 * m2l1lc2 * s[2] * velocity.theta2     -m2l1lc2 * s[2] * velocity.theta2;
-         m2l1lc2 * s[2] * velocity.theta1          0]
-    G = robot.gravity * [robot.links[1].mass * robot.links[1].length_to_CoM * s[1] + robot.links[2].mass * (robot.links[1].length * s[1] + robot.links[2].length_to_CoM * s12);
-                         robot.links[2].mass * robot.links[2].length_to_CoM * s12]
+    H = Mat{2, 2, T}((inertias_about_joint[1] + inertias_about_joint[2] + robot.links[2].mass * robot.links[1].length^2 + 2 * m2l1lc2 * c[2], h12),
+            (h12, inertias_about_joint[2]))
 
-    Cv = T[dot(AcrobotVelocity{T}(vec(C[i,:])), velocity) + G[i] + robot.links[i].damping * velocity[i] for i = 1:2]
+    C = Mat{2, 2, T}((-2 * m2l1lc2 * s[2] * velocity.theta2, -m2l1lc2 * s[2] * velocity.theta2),
+                     (m2l1lc2 * s[2] * velocity.theta1, 0))
+    G = robot.gravity * Vec{2, T}(robot.links[1].mass * robot.links[1].length_to_CoM * s[1] + robot.links[2].mass * (robot.links[1].length * s[1] + robot.links[2].length_to_CoM * s12),
+                         robot.links[2].mass * robot.links[2].length_to_CoM * s12)
 
-    B = Float64[0; 1]
+    damping = Vec{2, T}(robot.links[1].damping, robot.links[2].damping)
+    v = Vec{2, T}(velocity)
+    Cv::Vec{2, T} = (C * v) + G + damping .* v
+
+    B = Mat{1, 2, T}(0., 1.)'
 
     H, Cv, B
 end
