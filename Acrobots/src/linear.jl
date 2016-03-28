@@ -5,14 +5,28 @@ type LinearSystem{T, StateType, InputType, OutputType, NStates, NInputs, NOutput
     D::Mat{NOutputs, NInputs, T}
 end
 
-(*){M, N, T}(A::Mat{M, N, T}, x::FixedVectorNoTuple{N, T}) = [sum([A[i,j] * x[j] for j in 1:N]) for i in 1:M]
-
-function dynamics{T, StateType, InputType}(sys::LinearSystem{T, StateType, InputType}, t, state::StateType, input::InputType)
-    StateType{T}(sys.A * state + sys.B * input)
+@generated function dynamics{T, StateType, InputType}(sys::LinearSystem{T, StateType, InputType}, t, state::StateType, input::InputType)
+    if length(state) > 0 && length(input) > 0
+        return :(StateType{T}(sys.A * state + sys.B * input))
+    elseif length(state) > 0
+        return :(StateType{T}(sys.A * state))
+    elseif length(input) > 0
+        return :(StateType{T}(sys.B * input))
+    else
+        return :(StateType{T}())
+    end
 end
 
-function output{T, State, Input, Output}(sys::LinearSystem{T, State, Input, Output}, t, state::State, input::Input)
-    Output{T}(sys.C * state + sys.D * input)
+@generated function output{T, State, Input, Output}(sys::LinearSystem{T, State, Input, Output}, t, state::State, input::Input)
+    if length(state) > 0 && length(input) > 0
+        return :(Output{T}(sys.C * state + sys.D * input))
+    elseif length(state) > 0
+        return :(Output{T}(sys.C * state))
+    elseif length(input) > 0
+        return :(Output{T}(sys.D * input))
+    else
+        return :(Output{T}())
+    end
 end
 
 function linearize{StateType, InputType, OutputType}(robot::Manipulator{StateType, InputType, OutputType}, time, state::StateType, input::InputType)
@@ -37,13 +51,13 @@ function linearize{StateType, InputType, OutputType}(robot::Manipulator{StateTyp
         CD[:,1+(1:length(StateType))], CD[:,((length(StateType)+2):end)])
 end
 
-@make_type LQRState State x
+@make_type LQRState State
 
 function lqr{T, State, Input, Output}(sys::LinearSystem{T, State, Input, Output}, Q, R)
     K = lqr(Matrix{T}(sys.A), Matrix{T}(sys.B), Q, R)
-    LinearSystem{T, LQRState, Output, Input, 1, length(Output), length(Input)}(
-        Mat{1,1,T}(0),
-        Mat{1, length(Output), T}(0),
-        Mat{length(Input), 1, T}(0),
+    LinearSystem{T, LQRState, Output, Input, 0, length(Output), length(Input)}(
+        Mat{0,0,T}(),
+        Mat{0, length(Output), T}(tuple([tuple() for i in 1:length(Output)]...)),
+        Mat{length(Input), 0, T}(),
         Mat{length(Input), length(Output), T}(-K))
 end
