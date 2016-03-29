@@ -16,6 +16,37 @@ immutable AffineSystem{T, StateType, InputType, OutputType, NStates, NInputs, NO
     y0::OutputType
 end
 
+### Helper methods for affine systems. These allow general affine systems to be interpolated using the Interpolations.jl package
+one{T, StateType, InputType, OutputType, NStates, NInputs, NOutputs}(
+    ::Type{AffineSystem{T, StateType, InputType, OutputType, NStates, NInputs, NOutputs}}) =
+        AffineSystem{T, StateType, InputType, OutputType, NStates, NInputs, NOutputs}(
+    Mat{NStates, NStates, T}(1),
+    Mat{NStates, NInputs, T}(1),
+    Mat{NStates, NStates, T}(1),
+    Mat{NStates, NInputs, T}(1),
+    StateType{T}(1),
+    InputType{T}(1),
+    StateType{T}(1),
+    OutputType{T}(1))
+*(x::Real, sys::AffineSystem) = AffineSystem(x * sys.A,
+    x * sys.B,
+    x * sys.C,
+    x * sys.D,
+    x * sys.x0,
+    x * sys.u0,
+    x * sys.xd0,
+    x * sys.y0)
++(sys1::AffineSystem, sys2::AffineSystem) = AffineSystem(sys1.A + sys2.A,
+    sys1.B + sys2.B,
+    sys1.C + sys2.C,
+    sys1.D + sys2.D,
+    sys1.x0 + sys2.x0,
+    sys1.u0 + sys2.u0,
+    sys1.xd0 + sys2.xd0,
+    sys1.y0 + sys2.y0)
+
+
+
 convert{T, StateType, InputType, OutputType, NStates, NInputs, NOutputs}(::Type{LinearSystem}, sys::AffineSystem{T, StateType, InputType, OutputType, NStates, NInputs, NOutputs}) = LinearSystem{T, StateType, InputType, OutputType, NStates, NInputs, NOutputs}(sys.A, sys.B, sys.C, sys.D)
 
 @generated function dynamics{T, StateType, InputType}(sys::LinearSystem{T, StateType, InputType}, t, state::StateType, input::InputType)

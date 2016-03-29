@@ -5,7 +5,7 @@ import FixedSizeArrays: isapprox
 using Quaternions
 using PyLCM
 using PyCall
-import Base: convert, *
+import Base: convert, one, *, +
 using ForwardDiff
 using Flatten
 import ControlSystems: lqr
