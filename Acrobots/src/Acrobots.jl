@@ -5,10 +5,10 @@ import FixedSizeArrays: isapprox
 using Quaternions
 using PyLCM
 using PyCall
-import Base: convert, one, *, +
+import Base: convert, one, *, +, call
 using ForwardDiff
-using Flatten
-import ControlSystems: lqr
+import ControlSystems: lqr, care
+using Interpolations
 
 @pyimport drake as lcmdrake
 

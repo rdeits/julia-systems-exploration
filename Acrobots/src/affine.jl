@@ -17,17 +17,24 @@ immutable AffineSystem{T, StateType, InputType, OutputType, NStates, NInputs, NO
 end
 
 ### Helper methods for affine systems. These allow general affine systems to be interpolated using the Interpolations.jl package
+call{T}(::Type{Mat{0, 0, T}}, x::Number) = Mat{0,0,T}()
+call{N, T}(::Type{Mat{0, N, T}}) = Mat{0, N, T}(tuple([tuple() for i in 1:N]...))
+call{N, T}(::Type{Mat{0, N, T}}, x::Number) = Mat{0, N, T}()
+call{M, T}(::Type{Mat{M, 0, T}}, x::Number) = Mat{M, 0, T}()
 one{T, StateType, InputType, OutputType, NStates, NInputs, NOutputs}(
     ::Type{AffineSystem{T, StateType, InputType, OutputType, NStates, NInputs, NOutputs}}) =
         AffineSystem{T, StateType, InputType, OutputType, NStates, NInputs, NOutputs}(
     Mat{NStates, NStates, T}(1),
     Mat{NStates, NInputs, T}(1),
-    Mat{NStates, NStates, T}(1),
-    Mat{NStates, NInputs, T}(1),
+    Mat{NOutputs, NStates, T}(1),
+    Mat{NOutputs, NInputs, T}(1),
     StateType{T}(1),
     InputType{T}(1),
     StateType{T}(1),
     OutputType{T}(1))
+*{T}(x::Real, m::Mat{0, 0, T}) = Mat{0, 0, T}()
+*{N, T}(x::Real, m::Mat{0, N, T}) = Mat{0, N, T}()
+*{M, T}(x::Real, m::Mat{M, 0, T}) = Mat{M, 0, T}()
 *(x::Real, sys::AffineSystem) = AffineSystem(x * sys.A,
     x * sys.B,
     x * sys.C,
@@ -36,6 +43,9 @@ one{T, StateType, InputType, OutputType, NStates, NInputs, NOutputs}(
     x * sys.u0,
     x * sys.xd0,
     x * sys.y0)
++{T}(m1::Mat{0, 0, T}, m2::Mat{0, 0, T}) = Mat{0, 0, T}()
++{N, T}(m1::Mat{0, N, T}, m2::Mat{0, N, T}) = Mat{0, N, T}()
++{M, T}(m1::Mat{M, 0, T}, m2::Mat{M, 0, T}) = Mat{M, 0, T}()
 +(sys1::AffineSystem, sys2::AffineSystem) = AffineSystem(sys1.A + sys2.A,
     sys1.B + sys2.B,
     sys1.C + sys2.C,
@@ -67,13 +77,13 @@ end
 
 @generated function output{T, State, Input, Output}(sys::LinearSystem{T, State, Input, Output}, t, state::State, input::Input)
     if length(state) > 0 && length(input) > 0
-        return :(Output{T}(sys.C * state + sys.D * input))
+        return :(Output(sys.C * state + sys.D * input))
     elseif length(state) > 0
-        return :(Output{T}(sys.C * state))
+        return :(Output(sys.C * state))
     elseif length(input) > 0
-        return :(Output{T}(sys.D * input))
+        return :(Output(sys.D * input))
     else
-        return :(Output{T}())
+        return :(Output())
     end
 end
 
@@ -109,16 +119,83 @@ function linearize{StateType, InputType, OutputType}(robot::Manipulator{StateTyp
 end
 
 @make_type LQRState State
+call{T <: LQRState}(::Type{T}, x::Number) = LQRState{Float64}()
 
 function lqr{T, State, Input, Output}(sys::AffineSystem{T, State, Input, Output}, Q, R)
     K = lqr(Matrix{T}(sys.A), Matrix{T}(sys.B), Q, R)
     AffineSystem{T, LQRState, Output, Input, 0, length(Output), length(Input)}(
         Mat{0,0,T}(),
-        Mat{0, length(Output), T}(tuple([tuple() for i in 1:length(Output)]...)),
+        Mat{0, length(Output), T}(),
         Mat{length(Input), 0, T}(),
         Mat{length(Input), length(Output), T}(-K),
         LQRState{T}(),
         sys.C * sys.x0 + sys.D * sys.u0,
         LQRState{T}(),
-        Output(0))
+        Input(0))
+end
+
+immutable TimeVaryingRiccati
+    linearizations
+    Q
+    R
+end
+
+function dynamics(sys::TimeVaryingRiccati, t, state, input)
+    Q = sys.Q
+    R = sys.R
+    affine_sys = sys.linearizations[t]
+    A = affine_sys.A
+    B = affine_sys.B
+    S = state
+    -(Q - S * B * inv(R) * B' * S + S * A + A' * S)
+end
+
+output(sys::TimeVaryingRiccati, t, state, input) = state
+
+function tvlqr(linearizations, Q, R, Qf, Rf)
+    R = Mat(R)
+    Q = Mat(Q)
+    Qf = Mat(Qf)
+    Rf = Mat(Rf)
+    knots = linearizations.knots[1]
+    tf = knots[end]
+    sysf = linearizations[tf]
+    S = Mat(care(Matrix{Float64}(sysf.A), Matrix{Float64}(sysf.B), Matrix{Float64}(Qf), Matrix{Float64}(Rf)))
+    tvriccati = TimeVaryingRiccati(linearizations, Q, R)
+    K = inv(R) * sysf.B' * S'
+
+    T = Float64
+    Output = AcrobotOutput
+    Input = AcrobotInput
+    controllers = [AffineSystem{T, LQRState, Output, Input, 0, 4, 1}(
+        Mat{0,0,T}(),
+        Mat{0, length(Output), T}(),
+        Mat{length(Input), 0, T}(),
+        Mat{length(Input), length(Output), T}(-K),
+        LQRState{T}(),
+        sysf.C * sysf.x0 + sysf.D * sysf.u0,
+        LQRState{T}(),
+        sysf.u0)]
+
+    for i = length(knots):-1:2
+        t = knots[i]
+        dt = knots[i-1] - knots[i]
+        Sdot = dynamics(tvriccati, t, S, 0)
+        S += dt * Sdot
+
+        aff_sys = linearizations[t]
+        K = inv(R) * aff_sys.B' * S'
+
+
+        push!(controllers, AffineSystem{T, LQRState, Output, Input, 0, 4, 1}(
+            Mat{0,0,T}(),
+            Mat{0, length(Output), T}(),
+            Mat{length(Input), 0, T}(),
+            Mat{length(Input), length(Output), T}(-K),
+            LQRState{T}(),
+            aff_sys.C * aff_sys.x0 + aff_sys.D * aff_sys.u0,
+            LQRState{T}(),
+            aff_sys.u0))
+    end
+    interpolate((knots,), reverse(controllers), Gridded(Linear()))
 end
