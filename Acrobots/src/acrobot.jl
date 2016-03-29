@@ -40,11 +40,11 @@ function manipulator_dynamics{ParamType, T}(robot::Acrobot{ParamType}, state::Ac
     H = Mat{2, 2, T}((inertias_about_joint[1] + inertias_about_joint[2] + robot.links[2].mass * robot.links[1].length^2 + 2 * m2l1lc2 * c[2], h12),
             (h12, inertias_about_joint[2]))
 
-    C = Mat{2, 2, T}((-2 * m2l1lc2 * s[2] * velocity.theta2, -m2l1lc2 * s[2] * velocity.theta2),
-                     (m2l1lc2 * s[2] * velocity.theta1, 0))
+    C = Mat{2, 2, T}((-2 * m2l1lc2 * s[2] * velocity.theta2, m2l1lc2 * s[2] * velocity.theta1),
+                     (-m2l1lc2 * s[2] * velocity.theta2, 0))
+                     
     G = robot.gravity * Vec{2, T}(robot.links[1].mass * robot.links[1].length_to_CoM * s[1] + robot.links[2].mass * (robot.links[1].length * s[1] + robot.links[2].length_to_CoM * s12),
                          robot.links[2].mass * robot.links[2].length_to_CoM * s12)
-
     damping = Vec{2, T}(robot.links[1].damping, robot.links[2].damping)
     v = Vec{2, T}(velocity)
     Cv::Vec{2, T} = (C * v) + G + damping .* v
