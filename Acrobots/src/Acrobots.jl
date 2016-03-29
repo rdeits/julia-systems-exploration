@@ -1,6 +1,7 @@
 module Acrobots
 
 using FixedSizeArrays
+import FixedSizeArrays: isapprox
 using Quaternions
 using PyLCM
 using PyCall
@@ -15,6 +16,6 @@ include("system_types.jl")
 include("manipulator.jl")
 include("drake_vis.jl")
 include("acrobot.jl")
-include("linear.jl")
+include("affine.jl")
 
 end

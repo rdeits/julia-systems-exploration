@@ -23,3 +23,10 @@ abstract Output{N, T} <: FixedVectorNoTuple{N, T}
 abstract State{N, T} <: FixedVectorNoTuple{N, T}
 
 abstract DynamicalSystem{StateType, InputType, OutputType}
+
+function isapprox{FSA <: FixedSizeArrays.FixedArray, A <: Union{Array, FixedSizeArrays.FixedArray}}(a::FSA, b::A, atol::Real)
+    for i=1:length(a)
+        !isapprox(a[i], b[i]; atol=atol) && return false
+    end
+    true
+end
