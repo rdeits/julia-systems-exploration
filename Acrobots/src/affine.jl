@@ -121,28 +121,29 @@ end
 @make_type LQRState State
 call{T <: LQRState}(::Type{T}, x::Number) = LQRState{Float64}()
 
-function lqr{T, State, Input, Output}(sys::AffineSystem{T, State, Input, Output}, Q, R)
+function lqr{T, State, Input, Output}(sys::AffineSystem{T, State, Input, Output}, Q, R, operating_point)
     K = lqr(Matrix{T}(sys.A), Matrix{T}(sys.B), Q, R)
+    u0 = Output(operating_point)
     AffineSystem{T, LQRState, Output, Input, 0, length(Output), length(Input)}(
         Mat{0,0,T}(),
         Mat{0, length(Output), T}(),
         Mat{length(Input), 0, T}(),
         Mat{length(Input), length(Output), T}(-K),
         LQRState{T}(),
-        sys.C * sys.x0 + sys.D * sys.u0,
+        u0,
         LQRState{T}(),
         Input(0))
 end
 
 immutable TimeVaryingRiccati
     linearizations
-    Q
-    R
+    Qs
+    Rs
 end
 
 function dynamics(sys::TimeVaryingRiccati, t, state, input)
-    Q = sys.Q
-    R = sys.R
+    Q = sys.Qs[t]
+    R = sys.Rs[t]
     affine_sys = sys.linearizations[t]
     A = affine_sys.A
     B = affine_sys.B
@@ -152,17 +153,17 @@ end
 
 output(sys::TimeVaryingRiccati, t, state, input) = state
 
-function tvlqr(linearizations, Q, R, Qf, Rf)
-    R = Mat(R)
-    Q = Mat(Q)
+function tvlqr(linearizations, xf, Qs, Rs, Qf, Rf)
+    # R = Mat(R)
+    # Q = Mat(Q)
     Qf = Mat(Qf)
     Rf = Mat(Rf)
     knots = linearizations.knots[1]
     tf = knots[end]
     sysf = linearizations[tf]
     S = Mat(care(Matrix{Float64}(sysf.A), Matrix{Float64}(sysf.B), Matrix{Float64}(Qf), Matrix{Float64}(Rf)))
-    tvriccati = TimeVaryingRiccati(linearizations, Q, R)
-    K = inv(R) * sysf.B' * S'
+    tvriccati = TimeVaryingRiccati(linearizations, Qs, Rs)
+    K = inv(Rf) * sysf.B' * S'
 
     T = Float64
     Output = AcrobotOutput
@@ -173,9 +174,9 @@ function tvlqr(linearizations, Q, R, Qf, Rf)
         Mat{length(Input), 0, T}(),
         Mat{length(Input), length(Output), T}(-K),
         LQRState{T}(),
-        sysf.C * sysf.x0 + sysf.D * sysf.u0,
+        Output(xf),
         LQRState{T}(),
-        sysf.u0)]
+        Output(0))]
 
     for i = length(knots):-1:2
         t = knots[i]
@@ -183,7 +184,9 @@ function tvlqr(linearizations, Q, R, Qf, Rf)
         Sdot = dynamics(tvriccati, t, S, 0)
         S += dt * Sdot
 
+        # TODO: this is duplicating the lookup inside dynamics()
         aff_sys = linearizations[t]
+        R = Rs[t]
         K = inv(R) * aff_sys.B' * S'
 
 
@@ -193,7 +196,7 @@ function tvlqr(linearizations, Q, R, Qf, Rf)
             Mat{length(Input), 0, T}(),
             Mat{length(Input), length(Output), T}(-K),
             LQRState{T}(),
-            aff_sys.C * aff_sys.x0 + aff_sys.D * aff_sys.u0,
+            xf,
             LQRState{T}(),
             aff_sys.u0))
     end
