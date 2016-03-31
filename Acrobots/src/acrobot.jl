@@ -42,7 +42,7 @@ function manipulator_dynamics{ParamType, T}(robot::Acrobot{ParamType}, state::Ac
 
     C = Mat{2, 2, T}((-2 * m2l1lc2 * s[2] * velocity.theta2, m2l1lc2 * s[2] * velocity.theta1),
                      (-m2l1lc2 * s[2] * velocity.theta2, 0))
-                     
+
     G = robot.gravity * Vec{2, T}(robot.links[1].mass * robot.links[1].length_to_CoM * s[1] + robot.links[2].mass * (robot.links[1].length * s[1] + robot.links[2].length_to_CoM * s12),
                          robot.links[2].mass * robot.links[2].length_to_CoM * s12)
     damping = Vec{2, T}(robot.links[1].damping, robot.links[2].damping)
@@ -92,18 +92,18 @@ end
 
 rotmat(theta) = [cos(theta) -sin(theta); sin(theta) cos(theta)]
 
-function viewer_draw_msg{T}(robot::Acrobot, state::AcrobotState{T})
+function viewer_draw_msg{T}(robot::Acrobot, position::AcrobotPosition{T})
     msg = lcmdrake.lcmt_viewer_draw()
     msg[:num_links] = 2
     msg[:link_name] = ["link1"; "link2"]
     msg[:robot_num] = [1; 1]
 
     p0 = [0; 0]
-    p1 = rotmat(state.theta1) * [0; -robot.links[1].length]
+    p1 = rotmat(position.theta1) * [0; -robot.links[1].length]
 
     msg[:position] = Any[[0; 0; 0], [p1[1]; 0; p1[2]]]
-    quats = [qrotation([0; -1; 0], state.theta1);
-            qrotation([0.; -1; 0], state.theta1 + state.theta2)]
+    quats = [qrotation([0; -1; 0], position.theta1);
+            qrotation([0.; -1; 0], position.theta1 + position.theta2)]
     msg[:quaternion] = Any[[q.s; q.v1; q.v2; q.v3] for q in quats]
     msg
 end

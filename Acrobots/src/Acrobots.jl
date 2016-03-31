@@ -16,6 +16,7 @@ include("system_types.jl")
 include("manipulator.jl")
 include("drake_vis.jl")
 include("acrobot.jl")
+include("double_integrator.jl")
 include("affine.jl")
 
 end

@@ -15,6 +15,16 @@ immutable AffineSystem{T, StateType, InputType, OutputType, NStates, NInputs, NO
     xd0::StateType
     y0::OutputType
 end
+AffineSystem{T, StateType, InputType, OutputType, NStates, NInputs, NOutputs}(
+        A::Mat{NStates, NStates, T},
+        B::Mat{NStates, NInputs, T},
+        C::Mat{NOutputs, NStates, T},
+        D::Mat{NOutputs, NInputs, T},
+        x0::StateType,
+        u0::InputType,
+        xd0::StateType,
+        y0::OutputType) = AffineSystem{T, StateType, InputType, OutputType, NStates, NInputs, NOutputs}(
+            A, B, C, D, x0, u0, xd0, y0)
 
 ### Helper methods for affine systems. These allow general affine systems to be interpolated using the Interpolations.jl package
 call{T}(::Type{Mat{0, 0, T}}, x::Number) = Mat{0,0,T}()
@@ -23,7 +33,7 @@ call{N, T}(::Type{Mat{0, N, T}}, x::Number) = Mat{0, N, T}()
 call{M, T}(::Type{Mat{M, 0, T}}, x::Number) = Mat{M, 0, T}()
 one{T, StateType, InputType, OutputType, NStates, NInputs, NOutputs}(
     ::Type{AffineSystem{T, StateType, InputType, OutputType, NStates, NInputs, NOutputs}}) =
-        AffineSystem{T, StateType, InputType, OutputType, NStates, NInputs, NOutputs}(
+        AffineSystem(
     Mat{NStates, NStates, T}(1),
     Mat{NStates, NInputs, T}(1),
     Mat{NOutputs, NStates, T}(1),
@@ -89,7 +99,7 @@ end
 
 output{T, State, Input, Output}(sys::AffineSystem{T, State, Input, Output}, t, state::State, input::Input) = output(convert(LinearSystem, sys), t, state - sys.x0, input - sys.u0) + sys.y0
 
-@generated function dynamics{T, State, Input}(sys::Manipulator{State, Input}, x::AbstractVector{T})
+@generated function dynamics{T, State, Input}(sys::DynamicalSystem{State, Input}, x::AbstractVector{T})
     segment_lengths = [1; length(State); length(Input)]
     breaks = cumsum(segment_lengths)
     :(dynamics(sys, x[1],
@@ -97,7 +107,7 @@ output{T, State, Input, Output}(sys::AffineSystem{T, State, Input, Output}, t, s
         Input(x[$(breaks[2]+1):$(breaks[3])])))
 end
 
-@generated function output{T, State, Input}(sys::Manipulator{State, Input}, x::AbstractVector{T})
+@generated function output{T, State, Input}(sys::DynamicalSystem{State, Input}, x::AbstractVector{T})
     segment_lengths = [1; length(State); length(Input)]
     breaks = cumsum(segment_lengths)
     :(output(sys, x[1],
@@ -105,7 +115,7 @@ end
         Input(x[$(breaks[2]+1):$(breaks[3])])))
 end
 
-function linearize{StateType, InputType, OutputType}(robot::Manipulator{StateType, InputType, OutputType}, time, state::StateType, input::InputType)
+function linearize{StateType, InputType, OutputType}(robot::DynamicalSystem{StateType, InputType, OutputType}, time, state::StateType, input::InputType)
     x = vcat(map(x -> convert(Vector{Float64}, x), ([time], state, input))...)
     AB, dynamics_results = ForwardDiff.jacobian(x -> dynamics(robot, x), x, ForwardDiff.AllResults)
     CD, output_results = ForwardDiff.jacobian(x -> output(robot, x), x, ForwardDiff.AllResults)
@@ -168,7 +178,7 @@ function tvlqr(linearizations, xf, Qs, Rs, Qf, Rf)
     T = Float64
     Output = AcrobotOutput
     Input = AcrobotInput
-    controllers = [AffineSystem{T, LQRState, Output, Input, 0, 4, 1}(
+    controllers = [AffineSystem(
         Mat{0,0,T}(),
         Mat{0, length(Output), T}(),
         Mat{length(Input), 0, T}(),
@@ -190,7 +200,7 @@ function tvlqr(linearizations, xf, Qs, Rs, Qf, Rf)
         K = inv(R) * aff_sys.B' * S'
 
 
-        push!(controllers, AffineSystem{T, LQRState, Output, Input, 0, 4, 1}(
+        push!(controllers, AffineSystem(
             Mat{0,0,T}(),
             Mat{0, length(Output), T}(),
             Mat{length(Input), 0, T}(),
