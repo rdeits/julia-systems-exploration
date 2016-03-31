@@ -1,11 +1,11 @@
-immutable LinearSystem{T, StateType, InputType, OutputType, NStates, NInputs, NOutputs}
+immutable LinearSystem{T, StateType, InputType, OutputType, NStates, NInputs, NOutputs} <: DynamicalSystem{StateType, InputType, OutputType}
     A::Mat{NStates, NStates, T}
     B::Mat{NStates, NInputs, T}
     C::Mat{NOutputs, NStates, T}
     D::Mat{NOutputs, NInputs, T}
 end
 
-immutable AffineSystem{T, StateType, InputType, OutputType, NStates, NInputs, NOutputs}
+immutable AffineSystem{T, StateType, InputType, OutputType, NStates, NInputs, NOutputs} <: DynamicalSystem{StateType, InputType, OutputType}
     A::Mat{NStates, NStates, T}
     B::Mat{NStates, NInputs, T}
     C::Mat{NOutputs, NStates, T}
@@ -25,6 +25,7 @@ AffineSystem{T, StateType, InputType, OutputType, NStates, NInputs, NOutputs}(
         xd0::StateType,
         y0::OutputType) = AffineSystem{T, StateType, InputType, OutputType, NStates, NInputs, NOutputs}(
             A, B, C, D, x0, u0, xd0, y0)
+state_type(sys::AffineSystem) = typeof(sys.x0)
 
 ### Helper methods for affine systems. These allow general affine systems to be interpolated using the Interpolations.jl package
 call{T}(::Type{Mat{0, 0, T}}, x::Number) = Mat{0,0,T}()
@@ -38,10 +39,10 @@ one{T, StateType, InputType, OutputType, NStates, NInputs, NOutputs}(
     Mat{NStates, NInputs, T}(1),
     Mat{NOutputs, NStates, T}(1),
     Mat{NOutputs, NInputs, T}(1),
-    StateType{T}(1),
-    InputType{T}(1),
-    StateType{T}(1),
-    OutputType{T}(1))
+    StateType(1),
+    InputType(1),
+    StateType(1),
+    OutputType(1))
 *{T}(x::Real, m::Mat{0, 0, T}) = Mat{0, 0, T}()
 *{N, T}(x::Real, m::Mat{0, N, T}) = Mat{0, N, T}()
 *{M, T}(x::Real, m::Mat{M, 0, T}) = Mat{M, 0, T}()
@@ -95,6 +96,14 @@ end
     else
         return :(Output())
     end
+end
+
+function output{SysType}(sys::Interpolations.GriddedInterpolation{SysType}, t, state, input)
+    output(sys[t], t, state, input)
+end
+
+function dynamics{SysType}(sys::Interpolations.GriddedInterpolation{SysType}, t, state, input)
+    dynamics(sys[t], t, state, input)
 end
 
 output{T, State, Input, Output}(sys::AffineSystem{T, State, Input, Output}, t, state::State, input::Input) = output(convert(LinearSystem, sys), t, state - sys.x0, input - sys.u0) + sys.y0

@@ -30,3 +30,5 @@ function isapprox{FSA <: FixedSizeArrays.FixedArray, A <: Union{Array, FixedSize
     end
     true
 end
+
+state_type{Sys}(interp::Interpolations.GriddedInterpolation{Sys}) = state_type(interp.coefs[1])

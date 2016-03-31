@@ -15,16 +15,6 @@ function dynamics(robot::DoubleIntegrator, t, state, input)
     DoubleIntegratorState(state.xdot, input.u / robot.mass)
 end
 
-# state_type{T <: DoubleIntegrator}(bot_type::Type{T}) = DoubleIntegratorState
-# velocity_type{T <: DoubleIntegrator}(bot_type::Type{T}) = DoubleIntegratorVelocity
-#
-#
-# function manipulator_dynamics{ParamType, T}(robot::DoubleIntegrator{ParamType}, state::DoubleIntegratorState{T})
-#     H = Mat{1, 1, T}(robot.mass)
-#     Cv = Vec{2, T}(0)
-#     B = Mat{1, 1, T}(1)
-# end
-
 double_integrator() = DoubleIntegrator{Float64}(1.0)
 
 output(robot::DoubleIntegrator, t, state, input) = DoubleIntegratorOutput(state)
