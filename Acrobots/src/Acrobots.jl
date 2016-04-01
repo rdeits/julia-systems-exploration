@@ -18,5 +18,6 @@ include("drake_vis.jl")
 include("acrobot.jl")
 include("double_integrator.jl")
 include("affine.jl")
+include("SLQ.jl")
 
 end

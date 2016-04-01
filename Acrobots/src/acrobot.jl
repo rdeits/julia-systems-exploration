@@ -21,9 +21,7 @@ type Acrobot{T} <: Manipulator{AcrobotState, AcrobotInput, AcrobotOutput}
     gravity::T
 end
 
-state_type{T <: Acrobot}(bot_type::Type{T}) = AcrobotState
 velocity_type{T <: Acrobot}(bot_type::Type{T}) = AcrobotVelocity
-
 
 function manipulator_dynamics{ParamType, T}(robot::Acrobot{ParamType}, state::AcrobotState{T})
     inertias_about_joint = [robot.links[i].inertia + robot.links[i].mass * robot.links[i].length_to_CoM^2 for i in 1:2]

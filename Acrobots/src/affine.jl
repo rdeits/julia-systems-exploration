@@ -1,11 +1,11 @@
-immutable LinearSystem{T, StateType, InputType, OutputType, NStates, NInputs, NOutputs}
+immutable LinearSystem{T, StateType, InputType, OutputType, NStates, NInputs, NOutputs} <: DynamicalSystem{StateType, InputType, OutputType}
     A::Mat{NStates, NStates, T}
     B::Mat{NStates, NInputs, T}
     C::Mat{NOutputs, NStates, T}
     D::Mat{NOutputs, NInputs, T}
 end
 
-immutable AffineSystem{T, StateType, InputType, OutputType, NStates, NInputs, NOutputs}
+immutable AffineSystem{T, StateType, InputType, OutputType, NStates, NInputs, NOutputs} <: DynamicalSystem{StateType, InputType, OutputType}
     A::Mat{NStates, NStates, T}
     B::Mat{NStates, NInputs, T}
     C::Mat{NOutputs, NStates, T}
@@ -25,6 +25,7 @@ AffineSystem{T, StateType, InputType, OutputType, NStates, NInputs, NOutputs}(
         xd0::StateType,
         y0::OutputType) = AffineSystem{T, StateType, InputType, OutputType, NStates, NInputs, NOutputs}(
             A, B, C, D, x0, u0, xd0, y0)
+state_type(sys::AffineSystem) = typeof(sys.x0)
 
 ### Helper methods for affine systems. These allow general affine systems to be interpolated using the Interpolations.jl package
 call{T}(::Type{Mat{0, 0, T}}, x::Number) = Mat{0,0,T}()
@@ -38,13 +39,13 @@ one{T, StateType, InputType, OutputType, NStates, NInputs, NOutputs}(
     one(Mat{NStates, NInputs, T}),
     one(Mat{NOutputs, NStates, T}),
     one(Mat{NOutputs, NInputs, T}),
-    one(StateType{T}),
-    one(InputType{T}),
-    one(StateType{T}),
-    one(OutputType{T}))
+    one(StateType),
+    one(InputType),
+    one(StateType),
+    one(OutputType))
 *{T}(x::Real, m::Mat{0, 0, T}) = zero(Mat{0, 0, T})
-*{N, T}(x::Real, m::Mat{0, N, T}) = zero(Mat{0, N, T})
-*{M, T}(x::Real, m::Mat{M, 0, T}) = zero(Mat{M, 0, T})
+*{N, T}(x::Real, m::Mat{0, N, T}) = zero({0, N, T})
+*{M, T}(x::Real, m::Mat{M, 0, T}) = zero({M, 0, T})
 *(x::Real, sys::AffineSystem) = AffineSystem(x * sys.A,
     x * sys.B,
     x * sys.C,
@@ -95,6 +96,14 @@ end
     else
         return :(Output())
     end
+end
+
+function output{SysType}(sys::Interpolations.GriddedInterpolation{SysType}, t, state, input)
+    output(sys[t], t, state, input)
+end
+
+function dynamics{SysType}(sys::Interpolations.GriddedInterpolation{SysType}, t, state, input)
+    dynamics(sys[t], t, state, input)
 end
 
 output{T, State, Input, Output}(sys::AffineSystem{T, State, Input, Output}, t, state::State, input::Input) = output(convert(LinearSystem, sys), t, state - sys.x0, input - sys.u0) + sys.y0
