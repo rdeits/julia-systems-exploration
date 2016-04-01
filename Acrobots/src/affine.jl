@@ -34,17 +34,17 @@ call{M, T}(::Type{Mat{M, 0, T}}, x::Number) = Mat{M, 0, T}()
 one{T, StateType, InputType, OutputType, NStates, NInputs, NOutputs}(
     ::Type{AffineSystem{T, StateType, InputType, OutputType, NStates, NInputs, NOutputs}}) =
         AffineSystem(
-    Mat{NStates, NStates, T}(1),
-    Mat{NStates, NInputs, T}(1),
-    Mat{NOutputs, NStates, T}(1),
-    Mat{NOutputs, NInputs, T}(1),
-    StateType{T}(1),
-    InputType{T}(1),
-    StateType{T}(1),
-    OutputType{T}(1))
-*{T}(x::Real, m::Mat{0, 0, T}) = Mat{0, 0, T}()
-*{N, T}(x::Real, m::Mat{0, N, T}) = Mat{0, N, T}()
-*{M, T}(x::Real, m::Mat{M, 0, T}) = Mat{M, 0, T}()
+    one(Mat{NStates, NStates, T}),
+    one(Mat{NStates, NInputs, T}),
+    one(Mat{NOutputs, NStates, T}),
+    one(Mat{NOutputs, NInputs, T}),
+    one(StateType{T}),
+    one(InputType{T}),
+    one(StateType{T}),
+    one(OutputType{T}))
+*{T}(x::Real, m::Mat{0, 0, T}) = zero(Mat{0, 0, T})
+*{N, T}(x::Real, m::Mat{0, N, T}) = zero(Mat{0, N, T})
+*{M, T}(x::Real, m::Mat{M, 0, T}) = zero(Mat{M, 0, T})
 *(x::Real, sys::AffineSystem) = AffineSystem(x * sys.A,
     x * sys.B,
     x * sys.C,
@@ -179,14 +179,14 @@ function tvlqr(linearizations, xf, Qs, Rs, Qf, Rf)
     Output = AcrobotOutput
     Input = AcrobotInput
     controllers = [AffineSystem(
-        Mat{0,0,T}(),
-        Mat{0, length(Output), T}(),
-        Mat{length(Input), 0, T}(),
+        zero(Mat{0,0,T},
+        zero(Mat{0, length(Output), T}),
+        zero(Mat{length(Input), 0, T}),
         Mat{length(Input), length(Output), T}(-K),
-        LQRState{T}(),
+        zero(LQRState{T}),
         Output(xf),
-        LQRState{T}(),
-        Output(0))]
+        zero(LQRState{T}),
+        zero(Output))]
 
     for i = length(knots):-1:2
         t = knots[i]
@@ -201,13 +201,13 @@ function tvlqr(linearizations, xf, Qs, Rs, Qf, Rf)
 
 
         push!(controllers, AffineSystem(
-            Mat{0,0,T}(),
-            Mat{0, length(Output), T}(),
-            Mat{length(Input), 0, T}(),
+            zero(Mat{0,0,T}),
+            zero(Mat{0, length(Output), T}),
+            zero(Mat{length(Input), 0, T}),
             Mat{length(Input), length(Output), T}(-K),
-            LQRState{T}(),
+            zero(LQRState{T}),
             xf,
-            LQRState{T}(),
+            zero(LQRState{T}),
             aff_sys.u0))
     end
     interpolate((knots,), reverse(controllers), Gridded(Linear()))
