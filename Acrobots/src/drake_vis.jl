@@ -1,8 +1,8 @@
 type DrakeVisualizer
     robot
-    lcm::PyLCM.PyLCMWrapper
+    lcm::PyLCM.LCM
 
-    function DrakeVisualizer(robot, lcm::PyLCM.PyLCMWrapper)
+    function DrakeVisualizer(robot, lcm::PyLCM.LCM)
         vis = new(robot, lcm)
         load_robot(vis)
         vis
