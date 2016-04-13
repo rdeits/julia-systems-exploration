@@ -44,8 +44,8 @@ one{T, StateType, InputType, OutputType, NStates, NInputs, NOutputs}(
     one(StateType),
     one(OutputType))
 *{T}(x::Real, m::Mat{0, 0, T}) = zero(Mat{0, 0, T})
-*{N, T}(x::Real, m::Mat{0, N, T}) = zero({0, N, T})
-*{M, T}(x::Real, m::Mat{M, 0, T}) = zero({M, 0, T})
+*{N, T}(x::Real, m::Mat{0, N, T}) = zero(Mat{0, N, T})
+*{M, T}(x::Real, m::Mat{M, 0, T}) = zero(Mat{M, 0, T})
 *(x::Real, sys::AffineSystem) = AffineSystem(x * sys.A,
     x * sys.B,
     x * sys.C,
@@ -188,7 +188,7 @@ function tvlqr(linearizations, xf, Qs, Rs, Qf, Rf)
     Output = AcrobotOutput
     Input = AcrobotInput
     controllers = [AffineSystem(
-        zero(Mat{0,0,T},
+        zero(Mat{0,0,T}),
         zero(Mat{0, length(Output), T}),
         zero(Mat{length(Input), 0, T}),
         Mat{length(Input), length(Output), T}(-K),
