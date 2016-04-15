@@ -3,7 +3,7 @@ function simulate_and_linearize{State, Input, Output}(robot::DynamicalSystem{Sta
     controller,
     ts::Range,
     ticks_per_draw=1,
-    vis=DrakeVisualizer(robot))
+    vis=Visualizer(robot))
 
     dt = step(ts)
     x = initial_state

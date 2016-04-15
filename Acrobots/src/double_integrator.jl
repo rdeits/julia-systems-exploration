@@ -19,35 +19,10 @@ double_integrator() = DoubleIntegrator{Float64}(1.0)
 
 output(robot::DoubleIntegrator, t, state, input) = DoubleIntegratorOutput(state)
 
-function viewer_load_msg(robot::DoubleIntegrator)
-    msg = lcmdrake.lcmt_viewer_load_robot()
-    msg[:num_links] = 1
-
-    geom = lcmdrake.lcmt_viewer_geometry_data()
-    geom[:type] = geom[:BOX]
-    geom[:position] = [0; 0; 0.5]
-    quat = qrotation([0.; 1; 0], 0)
-    geom[:quaternion] = [quat.s; quat.v1; quat.v2; quat.v3]
-    geom[:color] = [0.2; 0.2; 0.8; 0.6]
-    geom[:string_data] = ""
-    geom[:float_data] = [1; 1; 1]
-    geom[:num_float_data] = 3
-    link_msg = lcmdrake.lcmt_viewer_link_data()
-    link_msg[:name] = "double_integrator"
-    link_msg[:robot_num] = 1
-    link_msg[:num_geom] = 1
-    push!(link_msg["geom"], geom)
-
-    push!(msg["link"], link_msg)
-    msg
+function visualizer_load(robot::DoubleIntegrator)
+    geometry = HyperRectangle(Vec(-0.5,-0.5,0), Vec(1.,1,1))
+    model = DrakeVisualizer.load(geometry)
+    return model
 end
 
-function viewer_draw_msg(robot::DoubleIntegrator, position::DoubleIntegratorPosition)
-    msg = lcmdrake.lcmt_viewer_draw()
-    msg[:num_links] = 1
-    msg[:link_name] = ["double_integrator"]
-    msg[:robot_num] = [1]
-    msg[:position] = Any[[position.x; 0; 0]]
-    msg[:quaternion] = Any[[1; 0; 0; 0]]
-    msg
-end
+link_origins(robot::DoubleIntegrator, position::DoubleIntegratorPosition) = [tformtranslate([position.x; 0; 0])]

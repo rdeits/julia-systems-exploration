@@ -1,25 +1,14 @@
-type DrakeVisualizer
-    robot
-    lcm::PyLCM.LCM
-
-    function DrakeVisualizer(robot, lcm::PyLCM.LCM)
-        vis = new(robot, lcm)
-        load_robot(vis)
-        vis
-    end
+type Visualizer{T <: DynamicalSystem}
+    robot::T
+    model::DrakeVisualizer.VisualizerModel
 end
 
-DrakeVisualizer(robot) = DrakeVisualizer(robot, LCM())
+Visualizer(robot) = Visualizer(robot, visualizer_load(robot))
 
-function load_robot(vis::DrakeVisualizer)
-    load_msg = viewer_load_msg(vis.robot)
-    publish(vis.lcm, "DRAKE_VIEWER_LOAD_ROBOT", load_msg)
+function draw{T}(vis::Visualizer, position::Position{T})
+    draw(vis.model, link_origins(vis.robot, position))
 end
 
-function draw{T}(vis::DrakeVisualizer, position::Position{T})
-    publish(vis.lcm, "DRAKE_VIEWER_DRAW", viewer_draw_msg(vis.robot, position))
-end
-
-function draw{T}(vis::DrakeVisualizer, state::State{T})
+function draw{T}(vis::Visualizer, state::State{T})
     draw(vis, convert(Position, state))
 end

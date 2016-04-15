@@ -58,50 +58,19 @@ function output{T}(robot::Acrobot, time, state::AcrobotState{T}, input::AcrobotI
     AcrobotOutput{T}(state...)
 end
 
-function viewer_data(link::Acrobots.AcrobotLink, name)
-    msg = lcmdrake.lcmt_viewer_link_data()
-    msg[:name] = name
-    msg[:robot_num] = 1
-    msg[:num_geom] = 1
-
-    geom = lcmdrake.lcmt_viewer_geometry_data()
-    geom[:type] = geom[:BOX]
-    geom[:position] = [0; 0; -link.length / 2]
-    quat = qrotation([0.; 1; 0], pi/2)
-    geom[:quaternion] = [quat.s; quat.v1; quat.v2; quat.v3]
-    geom[:color] = [0.2; 0.2; 0.8; 0.6]
-    geom[:string_data] = ""
-    geom[:float_data] = [link.length; 0.1; 0.1]
-    geom[:num_float_data] = 3
-    push!(msg["geom"], geom)
-
-    msg
-end
-
-function viewer_load_msg(robot::Acrobot)
-    msg = lcmdrake.lcmt_viewer_load_robot()
-    msg[:num_links] = 2
+function visualizer_load(robot::Acrobot)
+    links = DrakeVisualizer.Link[]
     for i in 1:2
-        push!(msg["link"], viewer_data(robot.links[i], "link$(i)"))
+        geometry = HyperRectangle(Vec(0.,0,0), Vec(robot.links[i].length, 0.1, 0.1))
+        data = DrakeVisualizer.GeometryData(geometry, tformtranslate([0; -0.05; -0.05]))
+        push!(links, DrakeVisualizer.Link([data], "link$(i)"))
     end
-    msg
+    return DrakeVisualizer.load(links)
 end
 
-
-rotmat(theta) = [cos(theta) -sin(theta); sin(theta) cos(theta)]
-
-function viewer_draw_msg{T}(robot::Acrobot, position::AcrobotPosition{T})
-    msg = lcmdrake.lcmt_viewer_draw()
-    msg[:num_links] = 2
-    msg[:link_name] = ["link1"; "link2"]
-    msg[:robot_num] = [1; 1]
-
-    p0 = [0; 0]
-    p1 = rotmat(position.theta1) * [0; -robot.links[1].length]
-
-    msg[:position] = Any[[0; 0; 0], [p1[1]; 0; p1[2]]]
-    quats = [qrotation([0; -1; 0], position.theta1);
-            qrotation([0.; -1; 0], position.theta1 + position.theta2)]
-    msg[:quaternion] = Any[[q.s; q.v1; q.v2; q.v3] for q in quats]
-    msg
+function link_origins(robot::Acrobot, position::AcrobotPosition)
+    transforms = Array{AffineTransform{Float64, 3}}(2)
+    transforms[1] = tformrotate([0; position.theta1 + pi/2; 0])
+    transforms[2] = transforms[1] * tformtranslate([robot.links[1].length; 0; 0]) * tformrotate([0; position.theta2; 0])
+    transforms
 end

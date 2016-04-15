@@ -1,16 +1,16 @@
 module Acrobots
 
 using FixedSizeArrays
-import FixedSizeArrays: isapprox
+using DrakeVisualizer
+import DrakeVisualizer: draw
+using AffineTransforms
 using Quaternions
-using PyLCM
-using PyCall
-import Base: convert, one, *, +, call
 using ForwardDiff
-import ControlSystems: lqr, care
 using Interpolations
-
-@pyimport drake as lcmdrake
+import GeometryTypes: HyperRectangle, Vec
+import FixedSizeArrays: isapprox
+import ControlSystems: lqr, care
+import Base: convert, one, *, +, call
 
 include("system_types.jl")
 include("manipulator.jl")
